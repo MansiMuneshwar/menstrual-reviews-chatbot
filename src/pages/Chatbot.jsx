@@ -30,7 +30,12 @@ export default function Chatbot() {
     if (!input.trim()) return;
 
     const userMessage = { sender: "user", text: input };
-    setMessages(prev => [...prev, userMessage]);
+
+    setMessages(prev => [
+      ...prev,
+      userMessage,
+      { sender: "bot", text: "typing" }
+    ]);
 
     setInput("");
 
@@ -51,18 +56,22 @@ export default function Chatbot() {
 
       const data = await response.json();
 
+      // remove typing indicator
+      setMessages(prev => prev.slice(0, -1));
+
+      // add real reply
       setMessages(prev => [
         ...prev,
         { sender: "bot", text: data.reply }
       ]);
 
     } catch (error) {
+
+      setMessages(prev => prev.slice(0, -1));
+
       setMessages(prev => [
         ...prev,
-        {
-          sender: "bot",
-          text: "⚠️ Sorry, I’m unable to respond right now."
-        }
+        { sender: "bot", text: "⚠️ Sorry, I’m unable to respond right now." }
       ]);
     }
   };
@@ -88,10 +97,17 @@ export default function Chatbot() {
       <div className="chat-window">
         {messages.map((msg, index) => (
           <div key={index} className={`chat-bubble ${msg.sender}`}>
-            {msg.text}
+            {msg.text === "typing" ? (
+              <div className="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            ) : (
+              msg.text
+            )}
           </div>
         ))}
-
         <div ref={messagesEndRef} />
       </div>
 
