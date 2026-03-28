@@ -20,7 +20,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Convert language codes → full names
+// Convert language code → full name
 function getLanguageName(code) {
   switch (code) {
     case "hi":
@@ -42,7 +42,7 @@ function getLanguageName(code) {
   }
 }
 
-// Safety check
+// Safety filter
 function isUnsafeMedicalRequest(message) {
   const msg = message.toLowerCase();
   return (
@@ -57,13 +57,13 @@ function isUnsafeMedicalRequest(message) {
   );
 }
 
-// Chat route (HYBRID LOGIC)
+// Chat route
 app.post("/chat", async (req, res) => {
   const { message, language = "en" } = req.body;
 
   const languageName = getLanguageName(language);
 
-  // Safety first
+  // Safety check
   if (isUnsafeMedicalRequest(message)) {
     return res.json({
       reply:
@@ -73,16 +73,18 @@ app.post("/chat", async (req, res) => {
 
   try {
     const systemPrompt = `
-You are a menstrual health information assistant.
+You are a menstrual health assistant.
 
-Respond ONLY in ${languageName}.
+VERY IMPORTANT:
+- You MUST respond ONLY in ${languageName}.
+- DO NOT use English unless the language is English.
+- Even if the user writes in another language, you must reply ONLY in ${languageName}.
 
 STRICT RULES:
 - Provide general, educational information only.
 - Do NOT diagnose conditions.
 - Do NOT recommend medications or treatments.
 - Do NOT give emergency instructions.
-- If unsure, ask for clarification.
 - Keep answers simple, clear, and supportive.
 `;
 
@@ -90,7 +92,10 @@ STRICT RULES:
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: message },
+        {
+          role: "user",
+          content: `User message: ${message}. Respond ONLY in ${languageName}.`,
+        },
       ],
     });
 
@@ -100,6 +105,7 @@ STRICT RULES:
   } catch (error) {
     console.warn("AI unavailable, using local responder:", error.code);
 
+    // Fallback response
     const localReply = getLocalResponse(message, languageName);
 
     return res.json({
