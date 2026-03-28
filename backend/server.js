@@ -15,12 +15,34 @@ app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
-// OpenAI client (AI enhancement layer)
+// OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Helper: should we refuse (medication / diagnosis / emergency)?
+// Convert language codes → full names
+function getLanguageName(code) {
+  switch (code) {
+    case "hi":
+      return "Hindi";
+    case "ta":
+      return "Tamil";
+    case "te":
+      return "Telugu";
+    case "bn":
+      return "Bengali";
+    case "mr":
+      return "Marathi";
+    case "gu":
+      return "Gujarati";
+    case "kn":
+      return "Kannada";
+    default:
+      return "English";
+  }
+}
+
+// Safety check
 function isUnsafeMedicalRequest(message) {
   const msg = message.toLowerCase();
   return (
@@ -37,20 +59,23 @@ function isUnsafeMedicalRequest(message) {
 
 // Chat route (HYBRID LOGIC)
 app.post("/chat", async (req, res) => {
-  const { message, language = "English" } = req.body;
+  const { message, language = "en" } = req.body;
 
-  // Hard safety boundary (always enforced)
+  const languageName = getLanguageName(language);
+
+  // Safety first
   if (isUnsafeMedicalRequest(message)) {
     return res.json({
       reply:
-        "I can’t help with medications, diagnosis, or emergencies. For these concerns, it’s important to consult a qualified healthcare professional.",
+        "I can’t help with medications, diagnosis, or emergencies. Please consult a healthcare professional.",
     });
   }
 
-  // Try AI FIRST (if available)
   try {
     const systemPrompt = `
 You are a menstrual health information assistant.
+
+Respond ONLY in ${languageName}.
 
 STRICT RULES:
 - Provide general, educational information only.
@@ -58,8 +83,7 @@ STRICT RULES:
 - Do NOT recommend medications or treatments.
 - Do NOT give emergency instructions.
 - If unsure, ask for clarification.
-- Be calm, respectful, and supportive.
-- Respond in ${language}.
+- Keep answers simple, clear, and supportive.
 `;
 
     const completion = await openai.chat.completions.create({
@@ -74,10 +98,9 @@ STRICT RULES:
       reply: completion.choices[0].message.content,
     });
   } catch (error) {
-    // AI unavailable → fall back safely
     console.warn("AI unavailable, using local responder:", error.code);
 
-    const localReply = getLocalResponse(message, language);
+    const localReply = getLocalResponse(message, languageName);
 
     return res.json({
       reply: localReply,
