@@ -1,0 +1,16 @@
+React 18
+Vite
+React Router DOM
+Firebase
+React Icons
+Node.js
+Express.js
+OpenAI API
+dotenv
+CORS
+Firebase Firestore
+Firebase Authentication
+npm
+Git
+GitHub
+Render
